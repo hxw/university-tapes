@@ -1,0 +1,188 @@
+
+;********************
+RELOP:
+    OR   A
+    SBC  HL,DE
+    JR   Z,EQL
+    JP   M,LSS
+    AND  4
+    JR   CALC
+LSS:
+    AND  2
+    JR   CALC
+EQL:
+    AND  1
+CALC:
+    SCF
+    RET  NZ
+    CCF
+    RET
+;********************
+MPY:
+    PUSH IY
+    LD   IY,0
+    LD   B,16
+LOOP:
+    SRL  H
+    RR   L
+    JR   NC,PASS
+    ADD  IY,DE
+PASS:
+    SLA  E
+    RL   D
+    DJNZ LOOP
+    PUSH IY
+    POP  HL
+    POP  IY
+    RET
+;********************
+DIV:
+    LD   B,H
+    LD   C,L
+    EXX
+    LD   HL,0
+    EXX
+WH1:
+    OR   A
+    SBC  HL,DE
+    ADD  HL,DE
+    JR   Z,L2
+    JP   P,WH2
+L2:
+    SLA  L
+    RL   H
+    JR   WH1
+WH2:
+    OR   A
+    SBC  HL,BC
+    ADD  HL,BC
+    JP   M,OUT
+    JR   Z,OUT
+    EXX
+    SLA  L
+    RL   H
+    EXX
+    SRA  H
+    RR   L
+    OR   A
+    SBC  HL,DE
+    ADD  HL,DE
+    JR   Z,THEN
+    JP   P,WH2
+THEN:
+    EX   DE,HL
+    OR   A
+    SBC  HL,DE
+    EX   DE,HL
+    EXX
+    INC  HL
+    EXX
+    JR   WH2
+OUT:
+    EXX
+    PUSH HL
+    EXX
+    POP  HL
+    RET
+;********************
+WRITENUM:
+    PUSH IX
+    EXX
+    LD   C,PORT
+    EXX
+    BIT  7,H
+    JR   Z,POS
+    LD   A,H
+    CPL
+    LD   H,A
+    LD   A,L
+    CPL
+    LD   L,A
+    INC  HL
+    LD   A,2DH
+    JR   PRT
+POS:
+    LD   A,20H
+PRT:
+    CALL OUTCH
+    LD   B,5
+    LD   IX,TABLE
+WLOOP:
+    LD   D,(IX+1)
+    LD   E,(IX+0)
+    LD   C,FFH
+REPD:
+    INC  C
+    OR   A
+    SBC  HL,DE
+    JP   M,FOUND
+    JR   REPD
+FOUND:
+    ADD  HL,DE
+    LD   A,30H
+    ADD  A,C
+    CALL OUTCH
+    INC  IX
+    INC  IX
+    DJNZ WLOOP
+    LD   A,0DH
+    CALL OUTCH
+    LD   A,0AH
+    CALL OUTCH
+    POP  IX
+    RET
+TABLE:
+    DEFW 10000
+    DEFW 1000
+    DEFW 100
+    DEFW 10
+    DEFW 1
+;********************
+READNUM:
+    EXX
+    LD   C,PORT
+    EXX
+    LD   HL,0
+    LD   D,0
+RDL1:
+    CALL DIGIT
+    JR   C,RDL1
+RDL2:
+    LD   E,A
+    ADD  HL,HL
+    PUSH HL
+    POP  BC
+    ADD  HL,HL
+    ADD  HL,HL
+    ADD  HL,BC
+    ADD  HL,DE
+    CALL DIGIT
+    JR   NC,RDL2
+    RET
+DIGIT:
+    CALL INCH
+    CP   30H
+    JP   M,ND
+    CP   3AH
+    JP   P,ND
+    SUB  30H
+    OR   A
+    RET
+ND:
+    SCF
+    RET
+;********************
+PORT     EQUB 0
+DISPLAY0:DEFW 0
+DISPLAY1:DEFW 0
+DISPLAY2:DEFW 0
+DISPLAY3:DEFW 0
+;***************
+    ORG  0004H
+INCH:
+    ORG  0008H
+OUTCH:
+    ORG  001CH
+MONITOR:
+;***************
+
